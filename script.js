@@ -6,6 +6,11 @@ function ytUrl(endpoint, params) {
   return API_BASE + '?' + p.toString();
 }
 
+async function safeJson(res) {
+  const text = await res.text();
+  try { return JSON.parse(text); } catch (_) { throw new Error('Server returned: ' + text.slice(0, 120)); }
+}
+
 /* ─── NAV ─── */
 function switchPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -101,7 +106,7 @@ async function fetchChannels(channelIds) {
     try {
       const res = await fetch(ytUrl('channels', { part: 'snippet,statistics', id: unique.slice(i, i + 50).join(',') }));
       if (!res.ok) continue;
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.items) data.items.forEach(ch => {
         channelCache[ch.id] = {
           subs: Number(ch.statistics?.subscriberCount || 0),
@@ -122,7 +127,7 @@ async function fetchVideoStats(videoIds) {
     try {
       const res = await fetch(ytUrl('videos', { part: 'statistics', id: unique.slice(i, i + 50).join(',') }));
       if (!res.ok) continue;
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.items) data.items.forEach(v => {
         videoCache[v.id] = videoCache[v.id] || {};
         Object.assign(videoCache[v.id], { statistics: v.statistics });
@@ -134,8 +139,8 @@ async function fetchVideoStats(videoIds) {
 async function fetchFullVideo(videoId) {
   try {
     const res = await fetch(ytUrl('videos', { part: 'snippet,contentDetails,statistics', id: videoId }));
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'HTTP ' + res.status); }
-    const data = await res.json();
+    if (!res.ok) { const e = await safeJson(res); throw new Error(e.error?.message || 'HTTP ' + res.status); }
+    const data = await safeJson(res);
     if (data.items && data.items[0]) {
       videoCache[videoId] = videoCache[videoId] || {};
       Object.assign(videoCache[videoId], data.items[0]);
@@ -382,8 +387,8 @@ async function exploreSearch(pageToken) {
     if (dur) prms.videoDuration = dur;
 
     const res = await fetch(ytUrl('search', prms));
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'HTTP ' + res.status); }
-    const data = await res.json();
+    if (!res.ok) { const e = await safeJson(res); throw new Error(e.error?.message || 'HTTP ' + res.status); }
+    const data = await safeJson(res);
     exploreNext = data.nextPageToken || null;
     explorePrev = data.prevPageToken || null;
 
@@ -436,8 +441,8 @@ async function risingSearch(pageToken) {
     if (dur) prms.videoDuration = dur;
     const d = timeOffset(risingPeriod); if (d) prms.publishedAfter = d.toISOString();
     const res = await fetch(ytUrl('search', prms));
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'HTTP ' + res.status); }
-    const data = await res.json();
+    if (!res.ok) { const e = await safeJson(res); throw new Error(e.error?.message || 'HTTP ' + res.status); }
+    const data = await safeJson(res);
     if (!data.items || !data.items.length) {
       container.innerHTML = '<div class="no-results"><p>No rising videos found</p><span>Try a broader time range or niche.</span></div>';
       stats.textContent = ''; return;
@@ -568,8 +573,8 @@ async function fetchTopToday() {
     if (topFormat === 'short' && !dur) prms.videoDuration = 'short';
 
     var res = await fetch(ytUrl('search', prms));
-    if (!res.ok) { var e = await res.json(); throw new Error(e.error?.message || 'HTTP ' + res.status); }
-    var data = await res.json();
+    if (!res.ok) { var e = await safeJson(res); throw new Error(e.error?.message || 'HTTP ' + res.status); }
+    var data = await safeJson(res);
     if (!data.items || !data.items.length) {
       container.innerHTML = '<div class="no-results"><p>No videos found' + (topNiche ? ' for "' + topNiche + '"' : '') + '</p></div>';
       stats.textContent = ''; return;
@@ -600,8 +605,8 @@ async function fetchTrending() {
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading trending...</p></div>';
   try {
     const res = await fetch(ytUrl('videos', { part: 'snippet', chart: 'mostPopular', maxResults: 24, regionCode: 'US' }));
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'HTTP ' + res.status); }
-    const data = await res.json();
+    if (!res.ok) { const e = await safeJson(res); throw new Error(e.error?.message || 'HTTP ' + res.status); }
+    const data = await safeJson(res);
     container.innerHTML = '';
     if (!data.items || !data.items.length) { container.innerHTML = '<div class="no-results"><p>No trending available</p></div>'; return; }
     const chIds = data.items.map(function(i) { return i.snippet && i.snippet.channelId; }).filter(Boolean);

@@ -5,8 +5,10 @@ const YOUTUBE_BASE = 'https://www.googleapis.com/youtube/v3';
 const ALLOWED_ENDPOINTS = ['search', 'videos', 'channels'];
 
 export default async function handler(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: { message: 'Method not allowed' } });
   }
 
   if (!YOUTUBE_API_KEY) {
@@ -19,18 +21,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: { message: 'Invalid or missing endpoint. Allowed: ' + ALLOWED_ENDPOINTS.join(', ') } });
   }
 
-  const url = new URL(`${YOUTUBE_BASE}/${endpoint}`);
-  url.searchParams.set('key', YOUTUBE_API_KEY);
-
-  for (const [key, value] of Object.entries(params)) {
-    if (key !== 'endpoint' && value !== undefined && value !== '') {
-      url.searchParams.set(key, value);
-    }
-  }
-
   try {
+    const url = new URL(`${YOUTUBE_BASE}/${endpoint}`);
+    url.searchParams.set('key', YOUTUBE_API_KEY);
+
+    for (const [key, value] of Object.entries(params)) {
+      if (key !== 'endpoint' && value !== undefined && value !== '') {
+        url.searchParams.set(key, value);
+      }
+    }
+
     const response = await fetch(url.toString());
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (_) {
+      return res.status(502).json({ error: { message: 'YouTube API returned invalid response' } });
+    }
 
     if (!response.ok) {
       return res.status(response.status).json(data);
