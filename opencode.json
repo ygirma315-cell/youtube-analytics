@@ -1,0 +1,106 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "model": "nvidia_glm/z-ai/glm-5.1",
+  "small_model": "nvidia_glm/z-ai/glm-5.1",
+
+  "compaction": {
+    "auto": false,
+    "prune": false,
+    "reserved": 10000
+  },
+
+  "provider": {
+    "nvidia_glm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "NVIDIA GLM 5.1",
+      "options": {
+        "baseURL": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "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"
+      },
+      "models": {
+        "z-ai/glm-5.1": {
+          "name": "GLM 5.1"
+        }
+      }
+    },
+
+    "nvidia_minimax": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "NVIDIA MiniMax M2.7",
+      "options": {
+        "baseURL": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "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"
+      },
+      "models": {
+        "minimaxai/minimax-m2.7": {
+          "name": "MiniMax M2.7"
+        }
+      }
+    },
+
+    "nvidia_deepseek": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "NVIDIA DeepSeek V4 Flash",
+      "options": {
+        "baseURL": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "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"
+      },
+      "models": {
+        "deepseek-ai/deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash"
+        }
+      }
+    },
+
+    "nvidia_nemotron": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "NVIDIA Nemotron 3 Ultra",
+      "options": {
+        "baseURL": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "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"
+      },
+      "models": {
+        "nvidia/nemotron-3-ultra-550b-a55b": {
+          "name": "Nemotron 3 Ultra 550B A55B"
+        }
+      }
+    },
+
+    "zenmux_glm52": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "ZenMux GLM 5.2 Free",
+      "options": {
+        "baseURL": "https://zenmux.ai/api/v1",
+        "apiKey": "sk-ai-v1-ca8123428fd53c05a6001737ba86718e9eebac9b323a30d8bdf44be524c22af6"
+      },
+      "models": {
+        "glm-5.2-free": {
+          "name": "GLM 5.2 Free"
+        }
+      }
+    },
+
+    "zenmux_claude": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "ZenMux Claude Models",
+      "options": {
+        "baseURL": "https://zenmux.ai/api/v1",
+        "apiKey": "sk-ai-v1-cfbdb2a9c2c67b2b7125f4346c30b2d21390694b3c843589bbcc27cd3efe6981"
+      },
+      "models": {
+        "claude-haiku-4-5": {
+          "name": "Claude Haiku 4.5 via ZenMux"
+        },
+        "claude-sonnet-4-6": {
+          "name": "Claude Sonnet 4.6 via ZenMux"
+        },
+        "claude-opus-4-6": {
+          "name": "Claude Opus 4.6 via ZenMux"
+        }
+      }
+    }
+  },
+
+  "permission": "allow"
+}

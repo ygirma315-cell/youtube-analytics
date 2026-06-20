@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoHub — Discover & Search YouTube</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="switchPage('home')">
+    <div class="logo-icon">&#9654;</div>
+    Video<span>Hub</span>
+  </div>
+  <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <nav id="mainNav">
+    <a class="active" onclick="switchPage('home')">Home</a>
+    <a onclick="switchPage('explore')">Explore</a>
+    <a onclick="switchPage('rising')">Rising</a>
+    <a onclick="switchPage('top')">Top Today</a>
+    <a onclick="switchPage('trending')">Trending</a>
+  </nav>
+</header>
+
+<!-- ═══ HOME ═══ -->
+<div id="page-home" class="page active">
+  <section class="hero">
+    <h1>Discover what <em>matters</em> to you</h1>
+    <p>Search millions of YouTube videos. Find creators, tutorials, music & anything that sparks your curiosity.</p>
+    <div class="hero-search">
+      <input id="heroSearchInput" placeholder="Search topic or paste YouTube link..." autofocus>
+      <button onclick="heroSearch()">Search</button>
+    </div>
+    <div class="featured-categories">
+      <button class="chip" onclick="quickSearch('Music')">Music</button>
+      <button class="chip" onclick="quickSearch('Tech')">Tech</button>
+      <button class="chip" onclick="quickSearch('Gaming')">Gaming</button>
+      <button class="chip" onclick="quickSearch('Cooking')">Cooking</button>
+      <button class="chip" onclick="quickSearch('Documentary')">Documentary</button>
+      <button class="chip" onclick="quickSearch('Programming')">Programming</button>
+      <button class="chip" onclick="quickSearch('Science')">Science</button>
+      <button class="chip" onclick="quickSearch('Travel')">Travel</button>
+      <button class="chip" onclick="quickSearch('Football')">Football</button>
+      <button class="chip" onclick="quickSearch('Entertainment')">Entertainment</button>
+    </div>
+  </section>
+</div>
+
+<!-- ═══ EXPLORE ═══ -->
+<div id="page-explore" class="page">
+  <div class="page-header">
+    <h2>Explore</h2>
+    <p>Search with filters for upload date, sort order, and duration.</p>
+  </div>
+  <div class="filter-bar">
+    <div class="search-inline">
+      <input id="exploreInput" placeholder="Search or paste YouTube link..." autofocus>
+      <button onclick="exploreSearch()">Search</button>
+    </div>
+    <label>Sort</label>
+    <select id="exploreOrder">
+      <option value="relevance">Relevance</option>
+      <option value="date">Upload date</option>
+      <option value="viewCount">View count</option>
+      <option value="rating">Rating</option>
+    </select>
+    <label>Uploaded</label>
+    <select id="exploreTime">
+      <option value="">Any time</option>
+      <option value="last1">Last hour</option>
+      <option value="today">Today</option>
+      <option value="week">This week</option>
+      <option value="month">This month</option>
+      <option value="year">This year</option>
+    </select>
+    <label>Duration</label>
+    <select id="exploreDur">
+      <option value="">Any</option>
+      <option value="short">Short (&lt;4m)</option>
+      <option value="medium">Medium (4-20m)</option>
+      <option value="long">Long (&gt;20m)</option>
+    </select>
+  </div>
+  <div class="results-area explore-area">
+    <div class="stats-bar" id="exploreStats"></div>
+    <div id="exploreResults"></div>
+  </div>
+</div>
+
+<!-- ═══ RISING ═══ -->
+<div id="page-rising" class="page">
+  <div class="page-header">
+    <h2>Rising</h2>
+    <p>Videos with the highest view counts published recently.</p>
+  </div>
+  <div class="rising-actions">
+    <div class="search-inline">
+      <input id="risingInput" placeholder="Niche or keyword (optional)">
+      <button onclick="risingSearch()">Search</button>
+    </div>
+    <label>Duration</label>
+    <select id="risingDur">
+      <option value="">Any</option>
+      <option value="short">Short (&lt;4m)</option>
+      <option value="medium">Medium (4-20m)</option>
+      <option value="long">Long (&gt;20m)</option>
+    </select>
+    <button class="pill-outline active" data-period="week" onclick="setRisingPeriod('week')">This week</button>
+    <button class="pill-outline" data-period="month" onclick="setRisingPeriod('month')">This month</button>
+    <button class="pill-outline" data-period="year" onclick="setRisingPeriod('year')">This year</button>
+  </div>
+  <div class="rising-stats" id="risingStats">Videos with the most views in the selected period.</div>
+  <div class="results-area compact-area">
+    <div id="risingResults"></div>
+  </div>
+</div>
+
+<!-- ═══ TOP TODAY ═══ -->
+<div id="page-top" class="page">
+  <div class="page-header">
+    <h2>Top Today</h2>
+    <p>Pick a format and niche to discover the most viewed videos published today.</p>
+  </div>
+
+  <!-- Format selector: Short or Long -->
+  <div class="format-selector" id="formatSelector">
+    <div class="format-card" onclick="selectFormat('short')">
+      <div class="icon">&#9632;</div>
+      <h3>Short Form</h3>
+      <p>Shorts, quick clips, vertical content, under 4 minutes</p>
+      <span class="tag short-tag">Popular on mobile</span>
+    </div>
+    <div class="format-card" onclick="selectFormat('long')">
+      <div class="icon">&#9654;</div>
+      <h3>Long Form</h3>
+      <p>Traditional videos, deep dives, full-length content</p>
+      <span class="tag long-tag">Standard YouTube</span>
+    </div>
+  </div>
+
+  <!-- Filter panel (shown after format selection) -->
+  <div class="top-filter-panel" id="topFilterPanel">
+    <div class="filter-row">
+      <span class="filter-label">Category</span>
+      <div class="tab-group" id="categoryTabs">
+        <button class="tab-btn active" data-cat="all" onclick="setTopCategory('all')">All</button>
+        <button class="tab-btn" data-cat="faceless" onclick="setTopCategory('faceless')">Faceless</button>
+        <button class="tab-btn" data-cat="withface" onclick="setTopCategory('withface')">With Face</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">Niche</span>
+      <div class="niche-scroll" id="nicheScroll"></div>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">Duration</span>
+      <select id="topDur">
+        <option value="">Any</option>
+        <option value="short">Short (&lt;4m)</option>
+        <option value="medium">Medium (4-20m)</option>
+        <option value="long">Long (&gt;20m)</option>
+      </select>
+      <span class="filter-label" style="margin-left:16px">Period</span>
+      <div class="time-pills">
+        <button class="time-pill active" data-period="today" onclick="setTopPeriod('today')">Today</button>
+        <button class="time-pill" data-period="week" onclick="setTopPeriod('week')">Week</button>
+        <button class="time-pill" data-period="month" onclick="setTopPeriod('month')">Month</button>
+        <button class="time-pill" data-period="year" onclick="setTopPeriod('year')">Year</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="top-stats" id="topStats">Choose a format above to get started.</div>
+  <div class="results-area compact-area">
+    <div id="topResults"></div>
+  </div>
+</div>
+
+<!-- ═══ TRENDING ═══ -->
+<div id="page-trending" class="page">
+  <div class="page-header">
+    <h2>Trending Now</h2>
+    <p>The most popular videos across YouTube right now.</p>
+  </div>
+  <div class="results-area compact-area" style="padding-top:0">
+    <div class="stats-bar" id="trendingStats"><span>YouTube's trending chart</span></div>
+    <div id="trendingResults" class="results-grid"></div>
+  </div>
+</div>
+
+<!-- ═══ VIDEO DETAIL ═══ -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-header">
+    <button class="back-btn" onclick="closeDetail()">&larr; Back</button>
+    <div class="link-input-wrap">
+      <input id="linkInput" placeholder="Paste YouTube link here..." onkeydown="if(event.key==='Enter') openLink()">
+      <button onclick="openLink()">Analyze</button>
+    </div>
+    <button class="refresh-detail-btn" onclick="refreshDetail()">Refresh</button>
+  </div>
+  <div class="detail-body" id="detailBody">
+    <div class="loading-state" id="detailLoading"><div class="spinner"></div><p>Loading video details...</p></div>
+  </div>
+</div>
+
+<footer>Powered by the YouTube Data API &mdash; Built with &hearts;</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
