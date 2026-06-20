@@ -118,15 +118,20 @@
       <input id="risingInput" placeholder="Niche or keyword (optional)">
       <button onclick="risingSearch()">Search</button>
     </div>
-    <select id="risingDur">
-      <option value="">Any duration</option>
-      <option value="short">Short (&lt;4m)</option>
-      <option value="medium">Medium (4-20m)</option>
-      <option value="long">Long (&gt;20m)</option>
-    </select>
-    <button class="pill-outline active" data-period="week" onclick="setRisingPeriod('week')">This week</button>
-    <button class="pill-outline" data-period="month" onclick="setRisingPeriod('month')">This month</button>
-    <button class="pill-outline" data-period="year" onclick="setRisingPeriod('year')">This year</button>
+    <div class="rising-filters">
+      <select id="risingDur">
+        <option value="">Any duration</option>
+        <option value="short">Short (&lt;4m)</option>
+        <option value="medium">Medium (4-20m)</option>
+        <option value="long">Long (&gt;20m)</option>
+      </select>
+      <div class="rising-pills">
+        <button class="pill-outline active" data-period="week" onclick="setRisingPeriod('week')">Week</button>
+        <button class="pill-outline" data-period="month" onclick="setRisingPeriod('month')">Month</button>
+        <button class="pill-outline" data-period="year" onclick="setRisingPeriod('year')">Year</button>
+      </div>
+    </div>
+  </div>
   </div>
   <div class="rising-stats" id="risingStats"></div>
   <div class="results-area"><div id="risingResults"></div></div>
