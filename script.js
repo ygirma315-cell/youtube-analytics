@@ -106,7 +106,7 @@ function errorHtml(msg) {
 function switchPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  const navs = ['home', 'analyzer', 'channels', 'rising', 'trending'];
+  const navs = ['home', 'explore', 'channels', 'rising', 'trending'];
   const idx = navs.indexOf(name);
   document.querySelectorAll('nav a').forEach((a, i) => a.classList.toggle('active', i === idx));
   if (name === 'trending' && !document.getElementById('trendingResults').hasChildNodes()) loadTrending();
@@ -130,51 +130,124 @@ document.addEventListener('click', function(e) {
 });
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeDetail(); closeMenu(); } });
 
-/* ─── HOME ─── */
+/* ─── HOME (ANALYZER) ─── */
 document.getElementById('heroSearchInput').addEventListener('keydown', e => { if (e.key === 'Enter') heroSearch(); });
+
 function heroSearch() {
   const q = document.getElementById('heroSearchInput').value.trim();
+  const container = document.getElementById('homeResult');
   if (!q) return;
+
   if (isValidVideoInput(q)) {
     const vid = extractVideoId(q);
-    if (vid) { openDetail(vid); return; }
+    if (vid) {
+      container.innerHTML = skeleton(1);
+      apiCall('video', { id: vid }).then(data => {
+        container.innerHTML = renderVideoAnalysis(data);
+      }).catch(err => {
+        container.innerHTML = errorHtml(err.message);
+      });
+      return;
+    }
   }
+
   const cid = extractChannelId(q);
   if (cid) { openChannelDetail(cid); return; }
   if (q.startsWith('@') || q.includes('youtube.com/channel/')) { openChannelDetail(q); return; }
-  document.getElementById('analyzerInput').value = q;
-  switchPage('analyzer');
-  analyzeVideo();
+
+  container.innerHTML = errorHtml('Please paste a valid YouTube video link or video ID.');
 }
 
-/* ─── VIDEO ANALYZER ─── */
-let analyzerDebounced = debounce(function() { analyzeVideo(); }, 300);
-document.getElementById('analyzerInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') analyzeVideo(); });
+/* ─── EXPLORE (SEARCH BY NAME) ─── */
+let exploreNext = null, explorePrev = null;
+document.getElementById('exploreInput').addEventListener('keydown', e => { if (e.key === 'Enter') exploreSearch(); });
 
-async function analyzeVideo() {
-  const input = document.getElementById('analyzerInput').value.trim();
-  const container = document.getElementById('analyzerResult');
-  if (!input) return;
+async function exploreSearch(pageToken) {
+  const q = document.getElementById('exploreInput').value.trim();
+  const container = document.getElementById('exploreResults');
+  const stats = document.getElementById('exploreStats');
+  if (!q) return;
 
-  if (!isValidVideoInput(input)) {
-    container.innerHTML = errorHtml('Please paste a valid YouTube video link or video ID.');
-    return;
-  }
+  const vid = extractVideoId(q);
+  if (vid) { openDetail(vid); return; }
 
-  const vid = extractVideoId(input);
-  if (!vid) {
-    container.innerHTML = errorHtml('Please paste a valid YouTube video link or video ID.');
-    return;
-  }
+  container.innerHTML = skeleton(8);
+  stats.innerHTML = '';
 
-  container.innerHTML = skeleton(1);
   try {
-    const data = await apiCall('video', { id: vid });
-    container.innerHTML = renderVideoAnalysis(data);
+    const params = {
+      q: q,
+      type: 'video',
+      order: document.getElementById('exploreOrder').value,
+      maxResults: 24
+    };
+    const dur = document.getElementById('exploreDur').value;
+    if (dur) params.videoDuration = dur;
+    if (pageToken) params.pageToken = pageToken;
+
+    const data = await apiCall('search', params);
+    exploreNext = data.nextPageToken || null;
+    explorePrev = data.prevPageToken || null;
+
+    if (!data.items || !data.items.length) {
+      container.innerHTML = '<p class="no-results-text">No videos found. Try different keywords.</p>';
+      return;
+    }
+
+    const ids = data.items.map(i => i.id?.videoId).filter(Boolean);
+    let videoStats = {};
+    if (ids.length) {
+      const vd = await apiCall('videos', { ids: ids.join(',') });
+      (vd.items || []).forEach(v => { videoStats[v.id] = v.statistics || {}; });
+    }
+
+    container.innerHTML = '<div class="results-grid">' + data.items.map(item => {
+      const vid = item.id?.videoId;
+      const vs = videoStats[vid] || {};
+      return buildExploreCard(item, vs);
+    }).join('') + '</div>';
+
+    let pagination = '';
+    if (explorePrev || exploreNext) {
+      pagination = '<div class="pagination">';
+      if (explorePrev) pagination += '<button onclick="exploreSearch(\'' + explorePrev + '\')">&larr; Previous</button>';
+      if (exploreNext) pagination += '<button onclick="exploreSearch(\'' + exploreNext + '\')">Next &rarr;</button>';
+      pagination += '</div>';
+    }
+
+    stats.innerHTML = '<span>' + data.items.length + ' results for "' + q + '"</span>';
+    container.innerHTML += pagination;
   } catch (err) {
     container.innerHTML = errorHtml(err.message);
   }
 }
+
+function buildExploreCard(item, stats) {
+  const vid = item.id?.videoId;
+  const sn = item.snippet || {};
+  const thumb = sn.thumbnails?.high?.url || sn.thumbnails?.medium?.url || '';
+  const views = stats.viewCount ? Number(stats.viewCount) : null;
+  const likes = stats.likeCount ? Number(stats.likeCount) : null;
+
+  return '<div class="video-card" onclick="openDetail(\'' + vid + '\')">' +
+    '<div class="thumb-wrap">' +
+      '<img src="' + thumb + '" alt="" loading="lazy">' +
+      '<div class="thumb-overlay">' +
+        (views !== null ? '<span class="thumb-views">' + fmtCount(views) + ' views</span>' : '') +
+      '</div>' +
+    '</div>' +
+    '<div class="card-body">' +
+      '<h3>' + (sn.title || '') + '</h3>' +
+      '<div class="card-channel">' + (sn.channelTitle || '') + '</div>' +
+      '<div class="card-meta">' +
+        '<span>' + timeAgo(sn.publishTime || sn.publishedAt) + '</span>' +
+        (likes !== null ? '<span>&#10084; ' + fmtCount(likes) + '</span>' : '') +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+/* ─── VIDEO ANALYZER (SHARED) ─── */
 
 function renderVideoAnalysis(data) {
   const v = data.video;
@@ -433,8 +506,7 @@ function applyChannelFilters() { searchChannels(); }
 
 /* ─── CHANNEL DETAIL ─── */
 async function openChannelDetail(channelIdOrHandle) {
-  switchPage('analyzer');
-  const container = document.getElementById('analyzerResult');
+  const container = document.getElementById('homeResult');
   container.innerHTML = skeleton(1);
   try {
     const data = await apiCall('channel', { id: channelIdOrHandle });

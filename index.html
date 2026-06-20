@@ -18,18 +18,18 @@
   </button>
   <nav id="mainNav">
     <a class="active" onclick="switchPage('home')">Home</a>
-    <a onclick="switchPage('analyzer')">Analyzer</a>
+    <a onclick="switchPage('explore')">Explore</a>
     <a onclick="switchPage('channels')">Channels</a>
     <a onclick="switchPage('rising')">Rising</a>
     <a onclick="switchPage('trending')">Trending</a>
   </nav>
 </header>
 
-<!-- HOME -->
+<!-- HOME = ANALYZER -->
 <div id="page-home" class="page active">
   <section class="hero">
     <h1>Analyze any YouTube video or channel</h1>
-    <p>Paste a YouTube link or search to get deep analytics, channel insights, and discover similar creators.</p>
+    <p>Paste a YouTube link to get deep analytics, channel insights, and discover similar creators.</p>
     <div class="hero-search">
       <input id="heroSearchInput" placeholder="Paste YouTube video URL or channel link..." autofocus>
       <button onclick="heroSearch()">Analyze</button>
@@ -41,19 +41,35 @@
       <div class="hf-item"><span class="hf-icon">&#128640;</span><span>Trending Videos</span></div>
     </div>
   </section>
+  <div id="homeResult"></div>
 </div>
 
-<!-- ANALYZER -->
-<div id="page-analyzer" class="page">
+<!-- EXPLORE = SEARCH VIDEOS BY NAME -->
+<div id="page-explore" class="page">
   <div class="page-header">
-    <h2>Video Analyzer</h2>
-    <p>Paste a YouTube video URL or ID to get detailed analytics.</p>
+    <h2>Explore Videos</h2>
+    <p>Search for any video by name or topic. Click a result to analyze it.</p>
   </div>
-  <div class="analyzer-input-bar">
-    <input id="analyzerInput" placeholder="Paste YouTube video URL or 11-character video ID">
-    <button onclick="analyzeVideo()" class="btn-primary">Analyze</button>
+  <div class="explore-search-bar">
+    <input id="exploreInput" placeholder="Search videos by name, topic, or keyword..." autofocus>
+    <button onclick="exploreSearch()" class="btn-primary">Search</button>
   </div>
-  <div id="analyzerResult"></div>
+  <div class="explore-filters">
+    <select id="exploreOrder">
+      <option value="relevance">Relevance</option>
+      <option value="date">Upload date</option>
+      <option value="viewCount">View count</option>
+      <option value="rating">Rating</option>
+    </select>
+    <select id="exploreDur">
+      <option value="">Any duration</option>
+      <option value="short">Short (&lt;4m)</option>
+      <option value="medium">Medium (4-20m)</option>
+      <option value="long">Long (&gt;20m)</option>
+    </select>
+  </div>
+  <div class="explore-stats" id="exploreStats"></div>
+  <div class="results-area"><div id="exploreResults"></div></div>
 </div>
 
 <!-- CHANNELS -->
