@@ -254,29 +254,65 @@ function renderVideoAnalysis(data) {
   const views = Number(st.viewCount || 0);
   const likes = Number(st.likeCount || 0);
   const comments = Number(st.commentCount || 0);
+  const favorites = Number(st.favoriteCount || 0);
   const duration = fmtDuration(cd.duration);
   const durationLong = fmtDurationLong(cd.duration);
   const published = new Date(s.publishedAt);
   const daysSince = Math.max(1, (Date.now() - published.getTime()) / 86400000);
+  const hoursSince = Math.max(1, daysSince * 24);
   const viewsPerDay = Math.round(views / daysSince);
+  const viewsPerHour = Math.round(views / hoursSince);
+  const viewsPerWeek = Math.round(views / Math.max(1, daysSince / 7));
+  const viewsPerMonth = Math.round(views / Math.max(1, daysSince / 30));
   const engagementRate = views > 0 ? (likes / views * 100) : 0;
   const commentRate = views > 0 ? (comments / views * 100) : 0;
+  const likeCommentRatio = comments > 0 ? (likes / comments) : 0;
+  const favRate = views > 0 ? (favorites / views * 100) : 0;
   const tags = s.tags || [];
   const desc = s.description || '';
   const shortDesc = desc.length > 300 ? desc.slice(0, 300) : desc;
   const catId = s.categoryId || '';
-  const catNames = { '1':'Film','2':'Autos','10':'Music','15':'Pets','17':'Sports','19':'Travel','20':'Gaming','22':'People','23':'Comedy','24':'Entertainment','25':'News','26':'Howto','27':'Education','28':'Science','29':'Nonprofits' };
+  const catNames = { '1':'Film & Animation','2':'Autos & Vehicles','10':'Music','15':'Pets & Animals','17':'Sports','19':'Travel & Events','20':'Gaming','22':'People & Blogs','23':'Comedy','24':'Entertainment','25':'News & Politics','26':'Howto & Style','27':'Education','28':'Science & Technology','29':'Nonprofits & Activism' };
   const catLabel = catNames[catId] || 'General';
 
   const cpmMap = { '1':[2,5],'2':[5,15],'10':[1,3],'17':[3,8],'20':[1,3],'22':[2,5],'23':[2,5],'24':[2,6],'25':[3,10],'26':[3,8],'27':[4,12],'28':[5,15] };
   const cpm = cpmMap[catId] || [1, 4];
-  const estLow = (views / 1000) * cpm[0] * 0.45;
-  const estHigh = (views / 1000) * cpm[1] * 0.55;
+  const rpmLow = cpm[0] * 0.45;
+  const rpmHigh = cpm[1] * 0.55;
+  const estLow = (views / 1000) * rpmLow;
+  const estHigh = (views / 1000) * rpmHigh;
+  const estDailyLow = estLow / daysSince;
+  const estDailyHigh = estHigh / daysSince;
+  const estMonthlyLow = estDailyLow * 30;
+  const estMonthlyHigh = estDailyHigh * 30;
+
+  let durationSec = 0;
+  if (cd.duration) {
+    const dm = cd.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (dm) durationSec = (parseInt(dm[1]||0)*3600) + (parseInt(dm[2]||0)*60) + parseInt(dm[3]||0);
+  }
+
+  const engGrade = engagementRate >= 8 ? 'A+' : engagementRate >= 5 ? 'A' : engagementRate >= 3 ? 'B' : engagementRate >= 1 ? 'C' : engagementRate >= 0.5 ? 'D' : 'F';
+  const engColor = { 'A+':'#00e676','A':'#00c853','B':'#66bb6a','C':'#ffc107','D':'#ff9800','F':'#ff5555' }[engGrade];
+
+  const titleLen = (s.title || '').length;
+  const descLen = desc.length;
+  const descWords = desc.split(/\s+/).filter(Boolean).length;
+  const hasLinks = /https?:\/\//.test(desc);
+  const hasTimestamps = /\d+:\d+/.test(desc);
+  const linkCount = (desc.match(/https?:\/\//g) || []).length;
+  const upperCaseWords = (s.title || '').split(/\s+/).filter(w => w === w.toUpperCase() && w.length > 1).length;
+
+  const dayName = published.toLocaleDateString('en-US', { weekday: 'long' });
+  const hour = published.getHours();
+  const timeOfDay = hour >= 6 && hour < 12 ? 'Morning' : hour >= 12 && hour < 17 ? 'Afternoon' : hour >= 17 && hour < 21 ? 'Evening' : 'Night';
 
   let chHtml = '';
   if (ch) {
     const chSt = ch.statistics || {};
     const chAge = channelAgeLabel(ch.snippet?.publishedAt);
+    const subsPerVideo = Number(chSt.videoCount || 0) > 0 ? Math.round(Number(chSt.subscriberCount || 0) / Number(chSt.videoCount)) : 0;
+    const viewsPerSub = Number(chSt.subscriberCount || 0) > 0 ? (views / Number(chSt.subscriberCount)) : 0;
     chHtml = `
       <div class="analysis-card ch-overview">
         <div class="ch-header">
@@ -292,6 +328,10 @@ function renderVideoAnalysis(data) {
           <div class="ch-stat"><span class="ch-stat-val">${fmtCount(chSt.subscriberCount)}</span><span class="ch-stat-lbl">Subscribers</span></div>
           <div class="ch-stat"><span class="ch-stat-val">${fmtCount(chSt.viewCount)}</span><span class="ch-stat-lbl">Total Views</span></div>
           <div class="ch-stat"><span class="ch-stat-val">${fmtCount(chSt.videoCount)}</span><span class="ch-stat-lbl">Videos</span></div>
+          <div class="ch-stat"><span class="ch-stat-val">${fmtCount(subsPerVideo)}</span><span class="ch-stat-lbl">Subs / Video</span></div>
+        </div>
+        <div class="ch-stats-row" style="margin-top:8px">
+          <div class="ch-stat"><span class="ch-stat-val">${viewsPerSub.toFixed(1)}x</span><span class="ch-stat-lbl">Views / Sub</span></div>
           <div class="ch-stat"><span class="ch-stat-val">${ch.snippet?.publishedAt ? new Date(ch.snippet.publishedAt).toLocaleDateString() : 'N/A'}</span><span class="ch-stat-lbl">Created</span></div>
         </div>
         <div class="ch-similar-link" onclick="findSimilarChannels('${ch.id}', '${(ch.snippet?.title || '').replace(/'/g, "\\'")}')">
@@ -330,13 +370,32 @@ function renderVideoAnalysis(data) {
       ${chHtml}
 
       <div class="analysis-grid">
+
         <div class="analysis-card">
-          <h4>Performance</h4>
-          <div class="perf-grid">
-            <div class="perf-item"><span class="perf-val">${fmtCount(viewsPerDay)}</span><span class="perf-lbl">Views / Day</span></div>
-            <div class="perf-item"><span class="perf-val">${engagementRate.toFixed(2)}%</span><span class="perf-lbl">Engagement</span></div>
-            <div class="perf-item"><span class="perf-val">${commentRate.toFixed(3)}%</span><span class="perf-lbl">Comment Rate</span></div>
-            <div class="perf-item"><span class="perf-val">${fmtCount(Math.round(views / Math.max(1, daysSince / 7)))}</span><span class="perf-lbl">Views / Week</span></div>
+          <h4>Engagement Score</h4>
+          <div class="eng-display">
+            <div class="eng-grade" style="color:${engColor}">${engGrade}</div>
+            <div class="eng-info">
+              <span class="eng-rate">${engagementRate.toFixed(2)}% like ratio</span>
+              <span class="eng-sub">${commentRate.toFixed(3)}% comment ratio</span>
+            </div>
+          </div>
+          <div class="eng-bars">
+            <div class="eng-bar-row"><span>Likes</span><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100, engagementRate * 10)}%;background:#00c853"></div></div><span>${fmtCount(likes)}</span></div>
+            <div class="eng-bar-row"><span>Comments</span><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100, commentRate * 100)}%;background:#448aff"></div></div><span>${fmtCount(comments)}</span></div>
+            <div class="eng-bar-row"><span>Favorites</span><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100, favRate * 100)}%;background:#ff9800"></div></div><span>${fmtCount(favorites)}</span></div>
+          </div>
+        </div>
+
+        <div class="analysis-card">
+          <h4>View Analytics</h4>
+          <div class="va-big">${fmtCount(views)}</div>
+          <div class="va-sub">total views</div>
+          <div class="va-grid">
+            <div class="va-item"><span class="va-val">${fmtCount(viewsPerHour)}</span><span class="va-lbl">/ hour</span></div>
+            <div class="va-item"><span class="va-val">${fmtCount(viewsPerDay)}</span><span class="va-lbl">/ day</span></div>
+            <div class="va-item"><span class="va-val">${fmtCount(viewsPerWeek)}</span><span class="va-lbl">/ week</span></div>
+            <div class="va-item"><span class="va-val">${fmtCount(viewsPerMonth)}</span><span class="va-lbl">/ month</span></div>
           </div>
         </div>
 
@@ -344,23 +403,57 @@ function renderVideoAnalysis(data) {
           <h4>Revenue Estimate</h4>
           <div class="rev-display">
             <span class="rev-amount">$${estLow.toFixed(0)} &ndash; $${estHigh.toFixed(0)}</span>
-            <span class="rev-note">est. earnings</span>
+            <span class="rev-note">est. total earnings</span>
           </div>
           <div class="rev-details">
             <div class="rd-row"><span>Category</span><span>${catLabel}</span></div>
-            <div class="rd-row"><span>CPM Range</span><span>$${cpm[0]} - $${cpm[1]}</span></div>
-            <div class="rd-row"><span>Daily Avg</span><span>$${(estLow/daysSince).toFixed(2)} - $${(estHigh/daysSince).toFixed(2)}</span></div>
+            <div class="rd-row"><span>CPM Range</span><span class="mono">$${cpm[0]} - $${cpm[1]}</span></div>
+            <div class="rd-row"><span>RPM Range</span><span class="mono">$${rpmLow.toFixed(2)} - $${rpmHigh.toFixed(2)}</span></div>
+            <div class="rd-row"><span>Daily Avg</span><span class="mono">$${estDailyLow.toFixed(2)} - $${estDailyHigh.toFixed(2)}</span></div>
+            <div class="rd-row"><span>Monthly Proj.</span><span class="mono">$${estMonthlyLow.toFixed(0)} - $${estMonthlyHigh.toFixed(0)}</span></div>
           </div>
-          <p class="rev-disclaimer">Estimate based on category avg CPM. Actual varies by audience geo and ad format.</p>
+          <p class="rev-disclaimer">Based on category avg CPM & YouTube's ~55% rev share. Actual varies by audience geo, ad format, seasonality.</p>
         </div>
 
         <div class="analysis-card">
-          <h4>Video Info</h4>
+          <h4>Interaction Ratios</h4>
+          <div class="ratio-grid">
+            <div class="ratio-item"><span class="ratio-val">${(likes/Math.max(1,views)*100).toFixed(2)}%</span><span class="ratio-lbl">Like / View</span></div>
+            <div class="ratio-item"><span class="ratio-val">${(comments/Math.max(1,views)*100).toFixed(3)}%</span><span class="ratio-lbl">Comment / View</span></div>
+            <div class="ratio-item"><span class="ratio-val">${likeCommentRatio.toFixed(1)}:1</span><span class="ratio-lbl">Like / Comment</span></div>
+            <div class="ratio-item"><span class="ratio-val">${ch ? (views/Math.max(1,Number(ch.statistics?.subscriberCount||1))*100).toFixed(1) : 'N/A'}%</span><span class="ratio-lbl">Views / Subs</span></div>
+          </div>
+        </div>
+
+        <div class="analysis-card">
+          <h4>Publishing Info</h4>
           <div class="info-grid">
-            <div class="info-item"><span class="info-icon">&#128197;</span><span class="info-val">${published.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}</span><span class="info-lbl">Published</span></div>
-            <div class="info-item"><span class="info-icon">&#9202;</span><span class="info-val">${durationLong}</span><span class="info-lbl">${duration}</span></div>
+            <div class="info-item"><span class="info-icon">&#128197;</span><span class="info-val">${published.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' })}</span><span class="info-lbl">${dayName}</span></div>
+            <div class="info-item"><span class="info-icon">&#128336;</span><span class="info-val">${timeOfDay}</span><span class="info-lbl">${published.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' })}</span></div>
+            <div class="info-item"><span class="info-icon">&#9202;</span><span class="info-val">${durationLong}</span><span class="info-lbl">${durationSec}s total</span></div>
+            <div class="info-item"><span class="info-icon">&#128200;</span><span class="info-val">${Math.floor(daysSince)}d ago</span><span class="info-lbl">${fmtCount(viewsPerDay)}/day</span></div>
+          </div>
+        </div>
+
+        <div class="analysis-card">
+          <h4>Video Details</h4>
+          <div class="info-grid">
             <div class="info-item"><span class="info-icon">&#127909;</span><span class="info-val">${(cd.definition || 'hd').toUpperCase()}</span><span class="info-lbl">Quality</span></div>
             <div class="info-item"><span class="info-icon">&#128221;</span><span class="info-val">${cd.caption === 'true' ? 'Yes' : 'No'}</span><span class="info-lbl">Captions</span></div>
+            <div class="info-item"><span class="info-icon">&#128279;</span><span class="info-val">${cd.embeddable !== false ? 'Yes' : 'No'}</span><span class="info-lbl">Embeddable</span></div>
+            <div class="info-item"><span class="info-icon">&#128196;</span><span class="info-val">${cd.licensedContent !== false ? 'Yes' : 'No'}</span><span class="info-lbl">Licensed</span></div>
+          </div>
+        </div>
+
+        <div class="analysis-card">
+          <h4>SEO & Description</h4>
+          <div class="seo-grid">
+            <div class="seo-item"><span class="seo-val">${titleLen}</span><span class="seo-lbl">Title chars</span><span class="seo-badge ${titleLen >= 40 && titleLen <= 70 ? 'good' : 'warn'}">${titleLen >= 40 && titleLen <= 70 ? 'Good' : titleLen < 40 ? 'Short' : 'Long'}</span></div>
+            <div class="seo-item"><span class="seo-val">${descLen}</span><span class="seo-lbl">Desc chars</span><span class="seo-badge ${descLen >= 200 ? 'good' : 'warn'}">${descLen >= 200 ? 'Good' : 'Short'}</span></div>
+            <div class="seo-item"><span class="seo-val">${descWords}</span><span class="seo-lbl">Desc words</span><span class="seo-badge ${descWords >= 50 ? 'good' : 'warn'}">${descWords >= 50 ? 'Detailed' : 'Brief'}</span></div>
+            <div class="seo-item"><span class="seo-val">${tags.length}</span><span class="seo-lbl">Tags</span><span class="seo-badge ${tags.length >= 5 ? 'good' : 'warn'}">${tags.length >= 5 ? 'Good' : 'Few'}</span></div>
+            <div class="seo-item"><span class="seo-val">${linkCount}</span><span class="seo-lbl">Links</span><span class="seo-badge ${hasLinks ? 'good' : ''}">${hasLinks ? 'Found' : 'None'}</span></div>
+            <div class="seo-item"><span class="seo-val">${hasTimestamps ? 'Yes' : 'No'}</span><span class="seo-lbl">Chapters</span><span class="seo-badge ${hasTimestamps ? 'good' : ''}">${hasTimestamps ? 'Yes' : 'No'}</span></div>
           </div>
         </div>
 
@@ -376,7 +469,7 @@ function renderVideoAnalysis(data) {
               <button class="show-more-btn" onclick="toggleDesc()">Show less</button>
             </div>
           </div>
-          ${tags.length ? '<div class="tags-section"><h5>Tags</h5><div class="tags-wrap">' + tags.slice(0, 20).map(t => '<span class="tag">' + t + '</span>').join('') + '</div></div>' : ''}
+          ${tags.length ? '<div class="tags-section"><h5>Tags (' + tags.length + ')</h5><div class="tags-wrap" id="tagsWrap">' + tags.slice(0, 8).map(t => '<span class="tag">' + t + '</span>').join('') + (tags.length > 8 ? '<button class="show-more-btn tags-toggle" onclick="toggleTags()">+' + (tags.length - 8) + ' more</button>' : '') + '</div><div class="tags-full" id="tagsFull" style="display:none">' + tags.map(t => '<span class="tag">' + t + '</span>').join('') + '<button class="show-more-btn tags-toggle" onclick="toggleTags()">Show less</button></div></div>' : ''}
         </div>
       </div>
 
@@ -387,6 +480,13 @@ function renderVideoAnalysis(data) {
 function toggleDesc() {
   const p = document.getElementById('descPreview');
   const f = document.getElementById('descFull');
+  if (p.style.display === 'none') { p.style.display = ''; f.style.display = 'none'; }
+  else { p.style.display = 'none'; f.style.display = ''; }
+}
+
+function toggleTags() {
+  const p = document.getElementById('tagsWrap');
+  const f = document.getElementById('tagsFull');
   if (p.style.display === 'none') { p.style.display = ''; f.style.display = 'none'; }
   else { p.style.display = 'none'; f.style.display = ''; }
 }
