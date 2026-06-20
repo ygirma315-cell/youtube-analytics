@@ -47,6 +47,8 @@ header {
   gap: 16px;
 }
 
+.header-top { display: contents; }
+
 .logo {
   display: flex;
   align-items: center;
@@ -1062,17 +1064,24 @@ footer {
   header {
     padding: 0 12px;
     height: auto;
-    min-height: 48px;
+    min-height: auto;
     flex-wrap: wrap;
     gap: 0;
   }
 
-  .logo {
-    font-size: 13px;
-    order: 2;
-    margin-left: auto;
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 0;
   }
-  .logo-icon { width: 20px; height: 20px; font-size: 9px; }
+
+  .logo {
+    font-size: 15px;
+    margin-left: 0;
+  }
+  .logo-icon { width: 24px; height: 24px; font-size: 11px; }
 
   .menu-toggle { display: none; }
 
@@ -1080,10 +1089,10 @@ footer {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    gap: 2px;
-    padding: 5px 0;
-    order: 1;
+    gap: 3px;
+    padding: 6px 0;
     width: 100%;
+    border-top: 1px solid var(--border);
     justify-content: space-between;
   }
 
