@@ -256,17 +256,23 @@ async function loadDetail(videoId) {
     const duration = fmtDuration(cd.duration);
     const definition = cd.definition || 'hd';
     const caption = cd.caption || 'false';
-
+    const embeddable = cd.embeddable !== false;
     const tags = s.tags || [];
     const published = new Date(s.publishedAt);
     const pubDate = published.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const daysAgo = Math.floor((Date.now() - published.getTime()) / 86400000);
+    const ageLabel = daysAgo === 0 ? 'Today' : daysAgo < 30 ? daysAgo + 'd ago' : daysAgo < 365 ? Math.floor(daysAgo / 30) + 'mo ago' : Math.floor(daysAgo / 365) + 'y ago';
 
-    const embedUrl = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1';
-    const engagementRate = views > 0 ? ((likes / views) * 100).toFixed(2) + '%' : 'N/A';
+    const embedUrl = 'https://www.youtube.com/embed/' + videoId;
+    const watchUrl = 'https://www.youtube.com/watch?v=' + videoId;
+
     const daysSince = Math.max(1, (Date.now() - published.getTime()) / 86400000);
-    const viewsPerDay = fmtCount(Math.round(views / daysSince));
+    const viewsPerDay = Math.round(views / daysSince);
+    const viewsPerHour = Math.round(views / Math.max(1, daysSince * 24));
+    const engagementRate = views > 0 ? (likes / views * 100) : 0;
+    const commentRate = views > 0 ? (comments / views * 100) : 0;
+    const likeCommentRatio = comments > 0 ? (likes / comments) : 0;
 
-    // Monetization estimation based on category
     var catId = s.categoryId || '0';
     var cpmRanges = {
       '1': [2,5], '2': [5,15], '10': [1,3], '15': [2,5], '17': [3,8],
@@ -278,13 +284,13 @@ async function loadDetail(videoId) {
       '43': [2,5], '44': [2,5]
     };
     var catName = {
-      '1':'Film','2':'Autos','10':'Music','15':'Pets','17':'Sports',
-      '18':'Short Movies','19':'Travel','20':'Gaming','21':'Videoblogging',
-      '22':'People','23':'Comedy','24':'Entertainment','25':'News',
-      '26':'Howto','27':'Education','28':'Science','29':'Nonprofits',
-      '30':'Movies','31':'Anime','32':'Action','33':'Classics','34':'Comedy',
+      '1':'Film & Animation','2':'Autos & Vehicles','10':'Music','15':'Pets & Animals','17':'Sports',
+      '18':'Short Movies','19':'Travel & Events','20':'Gaming','21':'Videoblogging',
+      '22':'People & Blogs','23':'Comedy','24':'Entertainment','25':'News & Politics',
+      '26':'Howto & Style','27':'Education','28':'Science & Technology','29':'Nonprofits & Activism',
+      '30':'Movies','31':'Anime/Animation','32':'Action/Adventure','33':'Classics','34':'Comedy (Film)',
       '35':'Documentary','36':'Drama','37':'Family','38':'Foreign',
-      '39':'Horror','40':'Sci-Fi','41':'Thriller','42':'Shorts',
+      '39':'Horror','40':'Sci-Fi/Fantasy','41':'Thriller','42':'Shorts',
       '43':'Shows','44':'Trailers'
     };
     var cpm = cpmRanges[catId] || [1, 4];
@@ -293,68 +299,229 @@ async function loadDetail(videoId) {
     var rpmHigh = cpm[1] * 0.55;
     var estLow = (views / 1000) * rpmLow;
     var estHigh = (views / 1000) * rpmHigh;
+    var estDailyLow = estLow / daysSince;
+    var estDailyHigh = estHigh / daysSince;
+    var monthlyEstLow = estDailyLow * 30;
+    var monthlyEstHigh = estDailyHigh * 30;
     var licensed = cd.licensedContent !== false;
 
+    var subsPerVideo = ch.totalVideos > 0 ? Math.round(ch.subs / ch.totalVideos) : 0;
+    var viewsPerSub = ch.subs > 0 ? (views / ch.subs) : 0;
+    var subGrowthEst = ch.subs > 0 && daysSince > 0 ? Math.round((views * 0.02) / daysSince) : 0;
+
+    var descLen = (s.description || '').length;
+    var descWordCount = (s.description || '').split(/\s+/).filter(Boolean).length;
+    var tagCount = tags.length;
+    var hasLinks = (s.description || '').includes('http');
+    var hasTimestamps = (s.description || '').match(/\d+:\d+/g);
+    var titleLen = (s.title || '').length;
+
+    var durationSec = 0;
+    if (cd.duration) {
+      var dm = cd.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      if (dm) durationSec = (parseInt(dm[1]||0)*3600) + (parseInt(dm[2]||0)*60) + parseInt(dm[3]||0);
+    }
+
+    var engagementGrade = engagementRate >= 8 ? 'A' : engagementRate >= 5 ? 'B' : engagementRate >= 3 ? 'C' : engagementRate >= 1 ? 'D' : 'F';
+    var gradeColor = { A: '#00c853', B: '#66bb6a', C: '#ffc107', D: '#ff9800', F: '#ff5555' }[engagementGrade];
+
+    var bestTime = '';
+    var hour = published.getHours();
+    if (hour >= 6 && hour < 9) bestTime = 'Morning (6-9am)';
+    else if (hour >= 9 && hour < 12) bestTime = 'Late Morning (9am-12pm)';
+    else if (hour >= 12 && hour < 15) bestTime = 'Afternoon (12-3pm)';
+    else if (hour >= 15 && hour < 18) bestTime = 'Mid-Afternoon (3-6pm)';
+    else if (hour >= 18 && hour < 21) bestTime = 'Evening (6-9pm)';
+    else if (hour >= 21 || hour < 1) bestTime = 'Night (9pm-1am)';
+    else bestTime = 'Late Night (1-6am)';
+
+    var dayName = published.toLocaleDateString('en-US', { weekday: 'long' });
+
+    var descLinks = (s.description || '').match(/https?:\/\/[^\s]+/g) || [];
+    var hasSocialLinks = descLinks.some(function(l) {
+      return l.match(/twitter|x\.com|instagram|tiktok|discord|patreon|paypal|donate|merch/i);
+    });
+
+    function miniBar(val, max, color) {
+      var pct = max > 0 ? Math.min(100, (val / max) * 100) : 0;
+      return '<div class="mini-bar"><div class="mini-bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div>';
+    }
+
+    function statBadge(val, label, color) {
+      return '<div class="stat-badge" style="border-left:3px solid ' + color + '">' +
+        '<span class="sb-val">' + val + '</span>' +
+        '<span class="sb-lbl">' + label + '</span>' +
+      '</div>';
+    }
+
     document.getElementById('detailBody').innerHTML =
-      '<div class="detail-layout">' +
-        '<div class="detail-main">' +
-          '<div class="detail-player">' +
-            '<iframe src="' + embedUrl + '" allow="autoplay; encrypted-media" allowfullscreen></iframe>' +
+      '<div class="analytics-layout">' +
+
+        '<div class="analytics-top">' +
+          '<div class="analytics-player">' +
+            '<iframe src="' + embedUrl + '" allow="encrypted-media" allowfullscreen></iframe>' +
           '</div>' +
-          '<div class="detail-info">' +
+          '<div class="analytics-top-info">' +
             '<h1>' + s.title + '</h1>' +
-            '<div class="detail-meta">' +
-              '<div class="stat-item"><span class="num">' + fmtCount(views) + '</span><span class="label">Views</span></div>' +
-              '<div class="stat-item"><span class="num">' + fmtCount(likes) + '</span><span class="label">Likes</span></div>' +
-              '<div class="stat-item"><span class="num">' + fmtCount(comments) + '</span><span class="label">Comments</span></div>' +
-              '<div class="stat-item"><span class="num">' + duration + '</span><span class="label">Duration</span></div>' +
+            '<div class="top-meta-row">' +
+              '<a class="top-channel-link" href="' + watchUrl + '" target="_blank"><img src="' + (ch.avatar || '') + '" alt=""><span>' + s.channelTitle + '</span></a>' +
+              '<span class="top-dot">&middot;</span>' +
+              '<span>' + fmtCount(ch.subs) + ' subscribers</span>' +
+              '<span class="top-dot">&middot;</span>' +
+              '<span>' + ageLabel + '</span>' +
             '</div>' +
-            '<div class="detail-channel">' +
-              '<img src="' + (ch.avatar || '') + '" alt="">' +
-              '<div class="ch-info">' +
-                '<h3>' + s.channelTitle + '</h3>' +
-                '<p>' + fmtCount(ch.subs) + ' subscribers &middot; ' + fmtCount(ch.totalViews) + ' total views &middot; ' + fmtCount(ch.totalVideos) + ' videos</p>' +
-                (chAge ? '<div class="ch-age channel-age ' + chAge.cls + '">' + chAge.label + '</div>' : '') +
-              '</div>' +
-            '</div>' +
-            (tags.length ? '<div class="detail-tags">' + tags.slice(0, 15).map(function(t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div>' : '') +
-            '<div class="detail-desc">' +
-              '<h4>Description</h4>' +
-              '<p>' + (s.description || 'No description.') + '</p>' +
+            '<div class="top-tag-row">' +
+              '<span class="top-tag tag-' + (views >= 1000000 ? 'hot' : views >= 100000 ? 'warm' : 'cool') + '">' + fmtCount(views) + ' views</span>' +
+              '<span class="top-tag tag-like">&#10084; ' + fmtCount(likes) + '</span>' +
+              '<span class="top-tag tag-comment">&#128172; ' + fmtCount(comments) + '</span>' +
+              '<span class="top-tag">' + duration + '</span>' +
+              '<span class="top-tag">' + definition.toUpperCase() + '</span>' +
+              (caption === 'true' ? '<span class="top-tag">CC</span>' : '') +
+              (licensed ? '<span class="top-tag">Licensed</span>' : '') +
             '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="detail-sidebar">' +
-          '<div class="stat-card">' +
-            '<h4>Performance</h4>' +
-            '<div class="row"><span class="lbl">Views per day</span><span class="val">' + viewsPerDay + '</span></div>' +
-            '<div class="row"><span class="lbl">Engagement rate</span><span class="val">' + engagementRate + '</span></div>' +
-            '<div class="row"><span class="lbl">Comments / 1K views</span><span class="val">' + (views > 0 ? (comments / views * 1000).toFixed(1) : 0) + '</span></div>' +
-            '<div class="row"><span class="lbl">Favorites</span><span class="val">' + fmtCount(favorites) + '</span></div>' +
+
+        '<div class="analytics-grid">' +
+
+          '<div class="a-card a-engagement">' +
+            '<h4>Engagement Score</h4>' +
+            '<div class="engagement-display">' +
+              '<div class="eng-grade" style="color:' + gradeColor + '">' + engagementGrade + '</div>' +
+              '<div class="eng-details">' +
+                '<div class="eng-rate">' + engagementRate.toFixed(2) + '% <span>like ratio</span></div>' +
+                '<div class="eng-sub">' + commentRate.toFixed(3) + '% <span>comment ratio</span></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="eng-bars">' +
+              '<div class="eng-bar-row"><span>Likes</span>' + miniBar(likes, views * 0.1, '#00c853') + '<span>' + fmtCount(likes) + '</span></div>' +
+              '<div class="eng-bar-row"><span>Comments</span>' + miniBar(comments, views * 0.01, '#448aff') + '<span>' + fmtCount(comments) + '</span></div>' +
+              '<div class="eng-bar-row"><span>Favorites</span>' + miniBar(favorites, views * 0.005, '#ff9800') + '<span>' + fmtCount(favorites) + '</span></div>' +
+            '</div>' +
           '</div>' +
-          '<div class="stat-card">' +
-            '<h4>Video Info</h4>' +
-            '<div class="row"><span class="lbl">Published</span><span class="val">' + pubDate + '</span></div>' +
-            '<div class="row"><span class="lbl">Duration</span><span class="val">' + duration + '</span></div>' +
-            '<div class="row"><span class="lbl">Quality</span><span class="val">' + definition.toUpperCase() + '</span></div>' +
-            '<div class="row"><span class="lbl">Captions</span><span class="val">' + (caption === 'true' ? 'Yes' : 'No') + '</span></div>' +
+
+          '<div class="a-card a-views">' +
+            '<h4>View Analytics</h4>' +
+            '<div class="view-numbers">' +
+              '<div class="vn-big">' + fmtCount(views) + '</div>' +
+              '<div class="vn-label">total views</div>' +
+            '</div>' +
+            '<div class="view-grid">' +
+              '<div class="vg-item"><span class="vg-val">' + fmtCount(viewsPerDay) + '</span><span class="vg-lbl">/day</span></div>' +
+              '<div class="vg-item"><span class="vg-val">' + fmtCount(viewsPerHour) + '</span><span class="vg-lbl">/hour</span></div>' +
+              '<div class="vg-item"><span class="vg-val">' + daysSince + '</span><span class="vg-lbl">days old</span></div>' +
+              '<div class="vg-item"><span class="vg-val">' + fmtCount(Math.round(views / Math.max(1, daysSince / 7))) + '</span><span class="vg-lbl">/week</span></div>' +
+            '</div>' +
           '</div>' +
-          '<div class="stat-card">' +
-            '<h4>Estimated Revenue</h4>' +
-            '<div class="row"><span class="lbl">Category</span><span class="val">' + catLabel + '</span></div>' +
-            '<div class="row"><span class="lbl">Est. CPM range</span><span class="val mono">$' + cpm[0] + ' - $' + cpm[1] + '</span></div>' +
-            '<div class="row"><span class="lbl">Est. earnings</span><span class="val revenue-range">$' + estLow.toFixed(0) + ' - $' + estHigh.toFixed(0) + '</span></div>' +
-            '<div class="row"><span class="lbl">Licensed content</span><span class="val ' + (licensed ? 'licensed-yes' : 'licensed-no') + '">' + (licensed ? 'Yes' : 'No') + '</span></div>' +
-            '<div class="estimate-note">Rough estimate based on category avg CPM &amp; YouTube\'s 45-55% revenue share. Actual earnings vary widely.</div>' +
+
+          '<div class="a-card a-revenue">' +
+            '<h4>Revenue Estimate</h4>' +
+            '<div class="rev-hero">' +
+              '<div class="rev-range">$' + estLow.toFixed(0) + ' &ndash; $' + estHigh.toFixed(0) + '</div>' +
+              '<div class="rev-label">estimated total earnings</div>' +
+            '</div>' +
+            '<div class="rev-grid">' +
+              '<div class="rg-item"><span class="rg-val">$' + estDailyLow.toFixed(2) + ' &ndash; $' + estDailyHigh.toFixed(2) + '</span><span class="rg-lbl">daily avg</span></div>' +
+              '<div class="rg-item"><span class="rg-val">$' + monthlyEstLow.toFixed(0) + ' &ndash; $' + monthlyEstHigh.toFixed(0) + '</span><span class="rg-lbl">monthly proj.</span></div>' +
+            '</div>' +
+            '<div class="rev-details">' +
+              '<div class="row"><span class="lbl">Category</span><span class="val">' + catLabel + '</span></div>' +
+              '<div class="row"><span class="lbl">Est. CPM</span><span class="val mono">$' + cpm[0] + ' &ndash; $' + cpm[1] + '</span></div>' +
+              '<div class="row"><span class="lbl">RPM range</span><span class="val mono">$' + rpmLow.toFixed(2) + ' &ndash; $' + rpmHigh.toFixed(2) + '</span></div>' +
+              '<div class="row"><span class="lbl">Licensed</span><span class="val ' + (licensed ? 'rev-yes' : 'rev-no') + '">' + (licensed ? 'Yes' : 'No') + '</span></div>' +
+            '</div>' +
+            '<div class="estimate-note">Based on category avg CPM &amp; YouTube\'s ~55% rev share. Actual varies by audience geo, ad format, seasonality.</div>' +
           '</div>' +
-          '<div class="stat-card">' +
-            '<h4>Channel</h4>' +
-            '<div class="row"><span class="lbl">Subscribers</span><span class="val">' + fmtCount(ch.subs) + '</span></div>' +
-            '<div class="row"><span class="lbl">Total views</span><span class="val">' + fmtCount(ch.totalViews) + '</span></div>' +
-            '<div class="row"><span class="lbl">Total videos</span><span class="val">' + fmtCount(ch.totalVideos) + '</span></div>' +
-            '<div class="row"><span class="lbl">Created</span><span class="val">' + (ch.createdAt ? new Date(ch.createdAt).toLocaleDateString() : 'N/A') + '</span></div>' +
-            (chAge ? '<div class="row"><span class="lbl">Channel age</span><span class="val channel-age ' + chAge.cls + '">' + chAge.label + '</span></div>' : '') +
+
+          '<div class="a-card a-channel">' +
+            '<h4>Channel Insights</h4>' +
+            '<div class="ch-hero">' +
+              '<img src="' + (ch.avatar || '') + '" alt="" class="ch-hero-avatar">' +
+              '<div>' +
+                '<div class="ch-hero-name">' + s.channelTitle + '</div>' +
+                (chAge ? '<div class="channel-age ' + chAge.cls + '">' + chAge.label + '</div>' : '') +
+              '</div>' +
+            '</div>' +
+            '<div class="ch-grid">' +
+              '<div class="cg-item"><span class="cg-val">' + fmtCount(ch.subs) + '</span><span class="cg-lbl">subscribers</span></div>' +
+              '<div class="cg-item"><span class="cg-val">' + fmtCount(ch.totalViews) + '</span><span class="cg-lbl">total views</span></div>' +
+              '<div class="cg-item"><span class="cg-val">' + fmtCount(ch.totalVideos) + '</span><span class="cg-lbl">videos</span></div>' +
+              '<div class="cg-item"><span class="cg-val">' + fmtCount(subsPerVideo) + '</span><span class="cg-lbl">subs/video</span></div>' +
+            '</div>' +
+            '<div class="ch-extra">' +
+              '<div class="row"><span class="lbl">Views per sub</span><span class="val">' + viewsPerSub.toFixed(1) + 'x</span></div>' +
+              '<div class="row"><span class="lbl">This video share</span><span class="val">' + (ch.totalViews > 0 ? (views / ch.totalViews * 100).toFixed(1) : 0) + '% of total</span></div>' +
+              '<div class="row"><span class="lbl">Avg views/video</span><span class="val">' + fmtCount(ch.totalVideos > 0 ? Math.round(ch.totalViews / ch.totalVideos) : 0) + '</span></div>' +
+            '</div>' +
           '</div>' +
+
+          '<div class="a-card a-meta">' +
+            '<h4>Video Metadata</h4>' +
+            '<div class="meta-grid">' +
+              '<div class="mg-item"><span class="mg-icon">&#128197;</span><span class="mg-val">' + pubDate + '</span><span class="mg-lbl">Published</span></div>' +
+              '<div class="mg-item"><span class="mg-icon">&#9202;</span><span class="mg-val">' + duration + '</span><span class="mg-lbl">' + fmtDuration(cd.duration) + ' (' + durationSec + 's)</span></div>' +
+              '<div class="mg-item"><span class="mg-icon">&#127909;</span><span class="mg-val">' + definition.toUpperCase() + '</span><span class="mg-lbl">Quality</span></div>' +
+              '<div class="mg-item"><span class="mg-icon">&#128221;</span><span class="mg-val">' + (caption === 'true' ? 'Yes' : 'No') + '</span><span class="mg-lbl">Captions</span></div>' +
+              '<div class="mg-item"><span class="mg-icon">&#128279;</span><span class="mg-val">' + embeddable ? 'Yes' : 'No' + '</span><span class="mg-lbl">Embeddable</span></div>' +
+              '<div class="mg-item"><span class="mg-icon">&#128241;</span><span class="mg-val">' + catLabel + '</span><span class="mg-lbl">Category</span></div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="a-card a-timing">' +
+            '<h4>Publishing Timing</h4>' +
+            '<div class="timing-info">' +
+              '<div class="ti-row"><span class="ti-icon">&#128336;</span><span class="ti-val">' + bestTime + '</span><span class="ti-lbl">Published at</span></div>' +
+              '<div class="ti-row"><span class="ti-icon">&#128197;</span><span class="ti-val">' + dayName + '</span><span class="ti-lbl">Day of week</span></div>' +
+              '<div class="ti-row"><span class="ti-icon">&#128200;</span><span class="ti-val">' + fmtCount(viewsPerDay) + ' views/day</span><span class="ti-lbl">Current velocity</span></div>' +
+              '<div class="ti-row"><span class="ti-icon">&#128293;</span><span class="ti-val">' + (engagementRate >= 5 ? 'Viral potential' : engagementRate >= 2 ? 'Good momentum' : 'Steady growth') + '</span><span class="ti-lbl">Momentum</span></div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="a-card a-ratios">' +
+            '<h4>Interaction Ratios</h4>' +
+            '<div class="ratio-grid">' +
+              '<div class="ratio-item">' +
+                '<div class="ratio-val">' + (views > 0 ? (likes / views * 100).toFixed(2) : 0) + '%</div>' +
+                '<div class="ratio-lbl">Like/View</div>' +
+                '<div class="ratio-bar">' + miniBar(likes, views, '#00c853') + '</div>' +
+              '</div>' +
+              '<div class="ratio-item">' +
+                '<div class="ratio-val">' + (views > 0 ? (comments / views * 100).toFixed(3) : 0) + '%</div>' +
+                '<div class="ratio-lbl">Comment/View</div>' +
+                '<div class="ratio-bar">' + miniBar(comments, views, '#448aff') + '</div>' +
+              '</div>' +
+              '<div class="ratio-item">' +
+                '<div class="ratio-val">' + likeCommentRatio.toFixed(1) + '</div>' +
+                '<div class="ratio-lbl">Like/Comment</div>' +
+                '<div class="ratio-bar">' + miniBar(likes, Math.max(likes, comments), '#ff9800') + '</div>' +
+              '</div>' +
+              '<div class="ratio-item">' +
+                '<div class="ratio-val">' + (ch.subs > 0 ? (views / ch.subs * 100).toFixed(1) : 0) + '%</div>' +
+                '<div class="ratio-lbl">Views/Subs</div>' +
+                '<div class="ratio-bar">' + miniBar(views, ch.subs, '#e040fb') + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="a-card a-seo">' +
+            '<h4>SEO & Tags</h4>' +
+            '<div class="seo-grid">' +
+              '<div class="seo-item"><span class="seo-val">' + titleLen + '</span><span class="seo-lbl">Title chars</span><span class="seo-status ' + (titleLen >= 40 && titleLen <= 70 ? 'good' : 'warn') + '">' + (titleLen >= 40 && titleLen <= 70 ? 'Optimal' : titleLen < 40 ? 'Short' : 'Long') + '</span></div>' +
+              '<div class="seo-item"><span class="seo-val">' + descLen + '</span><span class="seo-lbl">Desc chars</span><span class="seo-status ' + (descLen >= 200 ? 'good' : 'warn') + '">' + (descLen >= 200 ? 'Good' : 'Short') + '</span></div>' +
+              '<div class="seo-item"><span class="seo-val">' + descWordCount + '</span><span class="seo-lbl">Desc words</span><span class="seo-status ' + (descWordCount >= 50 ? 'good' : 'warn') + '">' + (descWordCount >= 50 ? 'Detailed' : 'Brief') + '</span></div>' +
+              '<div class="seo-item"><span class="seo-val">' + tagCount + '</span><span class="seo-lbl">Tags</span><span class="seo-status ' + (tagCount >= 5 ? 'good' : 'warn') + '">' + (tagCount >= 5 ? 'Good' : 'Few') + '</span></div>' +
+              '<div class="seo-item"><span class="seo-val">' + (hasLinks ? descLinks.length : 0) + '</span><span class="seo-lbl">Links in desc</span><span class="seo-status ' + (hasLinks ? 'good' : '') + '">' + (hasLinks ? (hasSocialLinks ? 'Social + more' : 'Links found') : 'None') + '</span></div>' +
+              '<div class="seo-item"><span class="seo-val">' + (hasTimestamps ? hasTimestamps.length : 0) + '</span><span class="seo-lbl">Timestamps</span><span class="seo-status ' + (hasTimestamps && hasTimestamps.length >= 3 ? 'good' : '') + '">' + (hasTimestamps ? 'Chaptered' : 'None') + '</span></div>' +
+            '</div>' +
+            (tags.length ? '<div class="seo-tags">' + tags.slice(0, 20).map(function(t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div>' : '<div class="seo-tags seo-empty">No tags available</div>') +
+          '</div>' +
+
+          '<div class="a-card a-desc">' +
+            '<h4>Description</h4>' +
+            '<div class="desc-content"><p>' + (s.description || 'No description available.') + '</p></div>' +
+            (descLinks.length ? '<div class="desc-links"><h5>Links in Description</h5>' + descLinks.slice(0, 10).map(function(l) { return '<a href="' + l + '" target="_blank" rel="noopener">' + l + '</a>'; }).join('') + '</div>' : '') +
+          '</div>' +
+
         '</div>' +
       '</div>';
   } catch (err) {
