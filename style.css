@@ -1068,11 +1068,11 @@ footer {
   }
 
   .logo {
-    font-size: 14px;
+    font-size: 13px;
     order: 2;
     margin-left: auto;
   }
-  .logo-icon { width: 22px; height: 22px; font-size: 10px; }
+  .logo-icon { width: 20px; height: 20px; font-size: 9px; }
 
   .menu-toggle { display: none; }
 
@@ -1080,21 +1080,19 @@ footer {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    gap: 3px;
-    padding: 6px 0;
+    gap: 2px;
+    padding: 5px 0;
     order: 1;
     width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    justify-content: space-between;
   }
-  nav::-webkit-scrollbar { display: none; }
 
   nav a {
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 600;
     border-radius: 100px;
-    min-height: 32px;
+    min-height: 28px;
     display: flex;
     align-items: center;
     white-space: nowrap;
