@@ -9,20 +9,21 @@
 <body>
 
 <header>
-  <div class="logo" onclick="switchPage('home')">
-    <div class="logo-icon">&#9654;</div>
-    Video<span>Hub</span>
-  </div>
   <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()" aria-label="Menu">
     <span></span><span></span><span></span>
   </button>
   <nav id="mainNav">
-    <a class="active" onclick="switchPage('home')">Home</a>
+    <a class="active" onclick="switchPage('home')">Analyzer</a>
     <a onclick="switchPage('explore')">Explore</a>
     <a onclick="switchPage('channels')">Channels</a>
     <a onclick="switchPage('rising')">Rising</a>
     <a onclick="switchPage('trending')">Trending</a>
   </nav>
+  <div class="nav-overlay" id="navOverlay" onclick="closeMenu()"></div>
+  <div class="logo" onclick="switchPage('home')">
+    <div class="logo-icon">&#9654;</div>
+    Video<span>Hub</span>
+  </div>
 </header>
 
 <!-- HOME = ANALYZER -->
