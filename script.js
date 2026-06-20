@@ -46,13 +46,29 @@ function timeAgo(date) {
 }
 
 function extractVideoId(str) {
-  if (!str) return null;
+  if (!str || typeof str !== 'string') return null;
+  str = str.trim();
   let m;
-  m = str.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtube\.com\/live\/|m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/);
+  m = str.match(/(?:youtube\.com\/watch\?.*?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtube\.com\/live\/|m\.youtube\.com\/watch\?.*?v=)([a-zA-Z0-9_-]{11})/);
   if (m) return m[1];
+  if (/^https?:\/\//.test(str)) return null;
   m = str.match(/^([a-zA-Z0-9_-]{11})$/);
   if (m) return m[1];
   return null;
+}
+
+function isValidVideoInput(str) {
+  if (!str || typeof str !== 'string') return false;
+  str = str.trim();
+  if (str.length < 11) return false;
+  if (/^https?:\/\/(www\.)?youtube\.com\/watch\?/.test(str)) return true;
+  if (/^https?:\/\/youtu\.be\//.test(str)) return true;
+  if (/^https?:\/\/(www\.)?youtube\.com\/shorts\//.test(str)) return true;
+  if (/^https?:\/\/(www\.)?youtube\.com\/embed\//.test(str)) return true;
+  if (/^https?:\/\/(www\.)?youtube\.com\/live\//.test(str)) return true;
+  if (/^https?:\/\/m\.youtube\.com\/watch\?/.test(str)) return true;
+  if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return true;
+  return false;
 }
 
 function extractChannelId(str) {
@@ -119,8 +135,10 @@ document.getElementById('heroSearchInput').addEventListener('keydown', e => { if
 function heroSearch() {
   const q = document.getElementById('heroSearchInput').value.trim();
   if (!q) return;
-  const vid = extractVideoId(q);
-  if (vid) { openDetail(vid); return; }
+  if (isValidVideoInput(q)) {
+    const vid = extractVideoId(q);
+    if (vid) { openDetail(vid); return; }
+  }
   const cid = extractChannelId(q);
   if (cid) { openChannelDetail(cid); return; }
   if (q.startsWith('@') || q.includes('youtube.com/channel/')) { openChannelDetail(q); return; }
@@ -138,8 +156,16 @@ async function analyzeVideo() {
   const container = document.getElementById('analyzerResult');
   if (!input) return;
 
+  if (!isValidVideoInput(input)) {
+    container.innerHTML = errorHtml('Please paste a valid YouTube video link or video ID.');
+    return;
+  }
+
   const vid = extractVideoId(input);
-  if (!vid) { container.innerHTML = errorHtml('Could not extract a video ID. Please paste a valid YouTube URL or 11-character video ID.'); return; }
+  if (!vid) {
+    container.innerHTML = errorHtml('Please paste a valid YouTube video link or video ID.');
+    return;
+  }
 
   container.innerHTML = skeleton(1);
   try {
@@ -571,9 +597,10 @@ function refreshDetail() {
 function openLink() {
   const val = document.getElementById('linkInput').value.trim();
   if (!val) return;
+  if (!isValidVideoInput(val)) { alert('Please paste a valid YouTube video link or video ID.'); return; }
   const vid = extractVideoId(val);
   if (vid) { openDetail(vid); document.getElementById('linkInput').value = ''; }
-  else { alert('Could not extract a YouTube video ID.'); }
+  else { alert('Please paste a valid YouTube video link or video ID.'); }
 }
 
 async function loadDetail(videoId) {
