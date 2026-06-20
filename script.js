@@ -123,11 +123,6 @@ function closeMenu() {
   document.getElementById('mainNav').classList.remove('open');
   document.getElementById('menuToggle').classList.remove('active');
 }
-document.addEventListener('click', function(e) {
-  const nav = document.getElementById('mainNav');
-  const tog = document.getElementById('menuToggle');
-  if (nav.classList.contains('open') && !nav.contains(e.target) && !tog.contains(e.target)) closeMenu();
-});
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeDetail(); closeMenu(); } });
 
 /* ─── HOME (ANALYZER) ─── */
