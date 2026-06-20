@@ -1059,46 +1059,51 @@ footer {
 }
 
 @media (max-width: 768px) {
-  header { padding: 0 16px; height: 54px; }
-  .logo { font-size: 17px; }
-  .logo-icon { width: 26px; height: 26px; font-size: 12px; }
+  header {
+    padding: 0 12px;
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    gap: 0;
+  }
 
-  .menu-toggle { display: flex; padding: 10px; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
+  .logo {
+    font-size: 14px;
+    order: 2;
+    margin-left: auto;
+  }
+  .logo-icon { width: 22px; height: 22px; font-size: 10px; }
+
+  .menu-toggle { display: none; }
 
   nav {
-    position: fixed;
-    top: 54px;
-    left: 0;
-    right: 0;
-    background: rgba(14, 14, 14, 0.98);
-    backdrop-filter: blur(16px);
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
-    padding: 8px 12px;
-    gap: 4px;
-    transform: translateY(-100%);
-    opacity: 0;
-    transition: transform 0.25s ease, opacity 0.25s ease;
-    z-index: 200;
-    border-bottom: 1px solid var(--border);
-    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 3px;
+    padding: 6px 0;
+    order: 1;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
-  nav.open { transform: translateY(0); opacity: 1; }
-  nav.open + .nav-overlay { display: block; }
+  nav::-webkit-scrollbar { display: none; }
+
   nav a {
-    padding: 10px 16px;
-    font-size: 14px;
+    padding: 6px 12px;
+    font-size: 12px;
     border-radius: 100px;
-    min-height: 40px;
+    min-height: 32px;
     display: flex;
     align-items: center;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
-  .hero { padding: 40px 16px 36px; }
-  .hero h1 { font-size: clamp(24px, 6vw, 36px); margin-bottom: 12px; }
-  .hero p { font-size: 15px; margin-bottom: 24px; }
+  .hero { padding: 48px 16px 36px; }
+  .hero h1 { font-size: clamp(22px, 5vw, 32px); margin-bottom: 12px; }
+  .hero p { font-size: 14px; margin-bottom: 24px; }
   .hero-search { flex-direction: column; gap: 8px; }
   .hero-search input { padding: 14px 16px; font-size: 16px; min-height: 48px; }
   .hero-search button { padding: 14px 24px; font-size: 15px; min-height: 48px; }
